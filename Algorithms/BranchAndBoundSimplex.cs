@@ -1,196 +1,198 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
+using Linear_Programming_and_Integer_Programming_Model_Solver.Core;
 
-namespace Algorithms
+namespace Linear_Programming_and_Integer_Programming_Model_Solver.Algorithms;
+
+public class BranchAndBoundSimplex : IAlgorithm
 {
-    /// <summary>
-    /// Branch-and-Bound wrapper that solves integer versions of an LP by repeatedly
-    /// solving LP relaxations (via a provided solver delegate) and branching on the most
-    /// fractional variable. Designed to be easy to integrate: remove/replace the
-    /// "integration stubs" below with your project's LP model/solver types.
-    /// </summary>
-    public class BranchAndBoundSimplex
+    private const double Epsilon = 1e-9;
+    private const int MaxNodes = 1000;
+
+    public SolutionResult Solve(LPModel model)
     {
-        // --- Integration stubs ------------------------------------------------
-        // Remove or replace the types below with your repo's model/solver types.
-        // They exist only so this file compiles standalone for easier integration.
+        var result = new SolutionResult();
 
-        public enum ConstraintSense { LessOrEqual, GreaterOrEqual, Equal }
+        // Branch-and-Bound assumes an integer programming problem.
+        // The Primal Simplex solver will be used to solve every LP relaxation.
 
-        public class Constraint
+        var simplex = new PrimalSimplex();
+
+        SolutionResult? bestSolution = null;
+        double bestObjective = double.NegativeInfinity;
+
+        var nodes = new Stack<LPModel>();
+        nodes.Push(CloneModel(model));
+
+        int nodesVisited = 0;
+
+        while (nodes.Count > 0 && nodesVisited < MaxNodes)
         {
-            public double[] Coefficients { get; }
-            public ConstraintSense Sense { get; }
-            public double RightHandSide { get; }
+            nodesVisited++;
 
-            public Constraint(double[] coefficients, ConstraintSense sense, double rhs)
+            LPModel currentModel = nodes.Pop();
+
+          
+            // STEP 1: Solve the LP relaxation using Primal Simplex
+           
+            SolutionResult relaxation = simplex.Solve(currentModel);
+
+            // If LP relaxation is infeasible, prune this node.
+            if (!relaxation.IsFeasible)
             {
-                Coefficients = coefficients;
-                Sense = sense;
-                RightHandSide = rhs;
+                continue;
+            }
+
+            // If LP relaxation is unbounded, report it.
+            if (!relaxation.IsBounded)
+            {
+                result.IsBounded = false;
+                result.ErrorMessage = "LP relaxation is unbounded.";
+                return result;
+            }
+
+          
+            // STEP 2: Bounding
+
+            if (bestSolution != null &&
+                relaxation.ObjectiveValue <= bestObjective + Epsilon)
+            {
+                // This node cannot improve the current best solution.
+                continue;
+            }
+
+           
+            // STEP 3: Check whether all variables are integer
+
+            int branchingVariable = FindFractionalVariable(
+                relaxation.VariableValues
+            );
+
+            // No fractional variable means we found an integer solution.
+            if (branchingVariable == -1)
+            {
+                bestSolution = relaxation;
+                bestObjective = relaxation.ObjectiveValue;
+                continue;
+            }
+
+        
+            // STEP 4: Branch
+
+            double value = relaxation.VariableValues[branchingVariable];
+
+            double floorValue = Math.Floor(value);
+            double ceilValue = Math.Ceiling(value);
+
+     
+            // LEFT BRANCH:
+            // x_i <= floor(x_i)
+
+            LPModel leftModel = CloneModel(model: currentModel);
+
+            var leftCoefficients =
+                new double[currentModel.VariableCount];
+
+            leftCoefficients[branchingVariable] = 1.0;
+
+            leftModel.Constraints.Add(
+                new Constraint(
+                    leftCoefficients,
+                    RelationType.LessThanOrEqualTo,
+                    floorValue
+                )
+            );
+
+
+            // RIGHT BRANCH:
+            // x_i >= ceil(x_i)
+
+            LPModel rightModel = CloneModel(model: currentModel);
+
+            var rightCoefficients =
+                new double[currentModel.VariableCount];
+
+            rightCoefficients[branchingVariable] = 1.0;
+
+            rightModel.Constraints.Add(
+                new Constraint(
+                    rightCoefficients,
+                    RelationType.GreaterThanOrEqualTo,
+                    ceilValue
+                )
+            );
+
+            // STEP 5: Put child nodes onto stack
+
+            nodes.Push(rightModel);
+            nodes.Push(leftModel);
+        }
+
+        // STEP 6: Return best integer solution
+
+        if (bestSolution == null)
+        {
+            result.IsFeasible = false;
+            result.ErrorMessage =
+                "No integer feasible solution was found.";
+            return result;
+        }
+
+        result.IsFeasible = true;
+        result.IsBounded = true;
+        result.IsOptimal = true;
+
+        result.ObjectiveValue = bestSolution.ObjectiveValue;
+        result.VariableValues =
+            (double[])bestSolution.VariableValues.Clone();
+
+        return result;
+    }
+
+
+    // Finds the first variable that is not an integer.
+
+    private static int FindFractionalVariable(double[] values)
+    {
+        for (int i = 0; i < values.Length; i++)
+        {
+            double rounded = Math.Round(values[i]);
+
+            if (Math.Abs(values[i] - rounded) > Epsilon)
+            {
+                return i;
             }
         }
 
-        public class LPModel
+        return -1;
+    }
+
+    // Creates a copy of the LP model so that branching does not modify
+    // the parent node.
+    
+    private static LPModel CloneModel(LPModel model)
+    {
+        var clone = new LPModel
         {
-            // number of decision variables (assumes variables are ordered 0..n-1)
-            public int NumVariables { get; private set; }
+            VariableCount = model.VariableCount,
+            Objective = model.Objective,
+            ObjectiveCoefficients =
+                (double[])model.ObjectiveCoefficients.Clone()
+        };
 
-            // objective: maximize c^T x (or minimize if your solver expects that; adapt accordingly)
-            public double[] ObjectiveCoefficients { get; private set; }
+        foreach (var constraint in model.Constraints)
+        {
+            clone.Constraints.Add(
+                new Constraint
+                {
+                    Coefficients =
+                        (double[])constraint.Coefficients.Clone(),
 
-            // list of constraints (will be cloned)
-            public List<Constraint> Constraints { get; } = new List<Constraint>();
+                    Relation = constraint.Relation,
 
-            public LPModel(int numVariables, double[] objectiveCoefficients)
-            {
-                NumVariables = numVariables;
-                ObjectiveCoefficients = objectiveCoefficients;
-            }
-
-            public LPModel Clone()
-            {
-                var clone = new LPModel(NumVariables, (double[])ObjectiveCoefficients.Clone());
-                clone.Constraints.AddRange(Constraints.Select(c =>
-                    new Constraint((double[])c.Coefficients.Clone(), c.Sense, c.RightHandSide)));
-                return clone;
-            }
-
-            public void AddConstraint(Constraint c) => Constraints.Add(c);
+                    RHS = constraint.RHS
+                }
+            );
         }
 
-        public class LPSolution
-        {
-            public bool IsFeasible { get; set; }
-            public double ObjectiveValue { get; set; }
-            public double[] VariableValues { get; set; } = Array.Empty<double>();
-        }
-
-        // Solver delegate: given an LPModel, return LPSolution.
-        // The solver must solve the LP relaxation. For maximization problems,
-        // ObjectiveValue should be the objective value (higher = better).
-        // Replace with the project's existing solver interface when integrating.
-        public delegate LPSolution LPSolverDelegate(LPModel model);
-
-        // --- End of integration stubs -----------------------------------------
-
-        private readonly LPSolverDelegate _solver;
-        private readonly double _integralityTolerance;
-        private readonly int _maxNodes;
-
-        /// <summary>
-        /// Create a B&B instance.
-        /// - solver: function that solves an LPModel and returns an LPSolution.
-        /// - integralityTolerance: how close to an integer a variable must be to count as integer (default 1e-6).
-        /// - maxNodes: optional limit on nodes searched (0 or negative => no limit).
-        /// </summary>
-        public BranchAndBoundSimplex(LPSolverDelegate solver, double integralityTolerance = 1e-6, int maxNodes = 0)
-        {
-            _solver = solver ?? throw new ArgumentNullException(nameof(solver));
-            _integralityTolerance = integralityTolerance;
-            _maxNodes = maxNodes;
-        }
-
-        /// <summary>
-        /// Solve the integer program with branch-and-bound.
-        /// - root: the LP relaxation model (without integrality constraints).
-        /// - integerVariableIndices: indices of variables that must be integer (if null, all variables are integer).
-        /// Returns the best integer-feasible solution found (or null if none).
-        /// </summary>
-        public LPSolution Solve(LPModel root, IEnumerable<int>? integerVariableIndices = null)
-        {
-            if (root == null) throw new ArgumentNullException(nameof(root));
-            var integerVars = (integerVariableIndices == null)
-                ? Enumerable.Range(0, root.NumVariables).ToArray()
-                : integerVariableIndices.ToArray();
-
-            LPSolution bestSolution = null;
-            double bestObjective = double.NegativeInfinity;
-
-            int nodesVisited = 0;
-
-            // Node structure: model + optional branching info
-            var stack = new Stack<LPModel>();
-            stack.Push(root.Clone());
-
-            while (stack.Count > 0)
-            {
-                if (_maxNodes > 0 && nodesVisited >= _maxNodes) break;
-                var nodeModel = stack.Pop();
-                nodesVisited++;
-
-                // Solve LP relaxation at this node
-                var sol = _solver(nodeModel);
-                if (sol == null || !sol.IsFeasible)
-                {
-                    // infeasible => prune
-                    continue;
-                }
-
-                // bounding: if objective <= bestObjective (for maximization), prune
-                if (bestSolution != null && sol.ObjectiveValue <= bestObjective + 1e-12)
-                {
-                    continue;
-                }
-
-                // check integrality
-                int fractionalIndex = -1;
-                double fractionalAmount = 0.0;
-                foreach (var i in integerVars)
-                {
-                    double val = (i < sol.VariableValues.Length) ? sol.VariableValues[i] : 0.0;
-                    double rounded = Math.Round(val);
-                    double diff = Math.Abs(val - rounded);
-                    if (diff > _integralityTolerance)
-                    {
-                        // fractional
-                        double fracPart = Math.Abs(val - Math.Floor(val));
-                        // choose most fractional variable (closest to 0.5 -> most fractional)
-                        double closenessToHalf = Math.Abs(fracPart - 0.5);
-                        // Convert closeness to a score for selecting variable with smallest closeness
-                        if (fractionalIndex == -1 || closenessToHalf < fractionalAmount)
-                        {
-                            fractionalIndex = i;
-                            fractionalAmount = closenessToHalf;
-                        }
-                    }
-                }
-
-                if (fractionalIndex == -1)
-                {
-                    // All integer variables are integer -> update best
-                    bestSolution = sol;
-                    bestObjective = sol.ObjectiveValue;
-                    continue;
-                }
-
-                // Branch on fractionalIndex: create two child nodes
-                double xVal = sol.VariableValues[fractionalIndex];
-                double floorVal = Math.Floor(xVal);
-                double ceilVal = Math.Ceiling(xVal);
-
-                // Left branch: x_i <= floor(xVal)
-                var left = nodeModel.Clone();
-                var leftCoeffs = new double[left.NumVariables];
-                leftCoeffs[fractionalIndex] = 1.0;
-                left.AddConstraint(new Constraint(leftCoeffs, ConstraintSense.LessOrEqual, floorVal));
-                // Right branch: x_i >= ceil(xVal)
-                var right = nodeModel.Clone();
-                var rightCoeffs = new double[right.NumVariables];
-                rightCoeffs[fractionalIndex] = 1.0;
-                right.AddConstraint(new Constraint(rightCoeffs, ConstraintSense.GreaterOrEqual, ceilVal));
-
-                // Heuristic: search the bound that is more promising first.
-                // We'll solve both quickly to estimate which to push first; to avoid extra solves,
-                // push the branch with larger LP relaxation objective first if possible.
-                // For simplicity and to avoid extra solves, push right then left (stack => left solved next).
-                // If you want best-first, solve children here and order by objective (extra solves).
-                stack.Push(right);
-                stack.Push(left);
-            }
-
-            return bestSolution;
-        }
+        return clone;
     }
 }
