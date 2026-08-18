@@ -35,7 +35,15 @@ internal class Program
                     break;
 
                 // case "4": Branch & Bound Simplex   -> Member 2, wire up once delivered
-                // case "5": Cutting Plane Algorithm  -> Member 2, wire up once delivered
+                case "4":
+                    RunAlgorithm( new BranchAndBoundSimplex(), "Branch & Bound Simplex");
+                    break;
+
+                case "5":
+                    RunAlgorithm( new CuttingPlaneAlgorithm(),"Cutting Plane Algorithm");
+                    break;
+
+                    
                 // case "6": Branch & Bound Knapsack  -> Member 4, wire up once delivered
                 // case "7": Sensitivity Analysis     -> Member 3, gate on currentResult.IsOptimal
                 // case "8": Duality                  -> Member 3
@@ -52,15 +60,17 @@ internal class Program
     }
 
     //Start up Menu======================================================
-    private static void PrintMenu()
-    {
-        Console.WriteLine();
-        Console.WriteLine("1. Load input file");
-        Console.WriteLine("2. Solve - Primal Simplex");
-        Console.WriteLine("3. Solve - Revised Primal Simplex");
-        Console.WriteLine("0. Exit");
-        Console.Write("Enter Choice > ");
-    }
+   private static void PrintMenu()
+{
+    Console.WriteLine();
+    Console.WriteLine("1. Load input file");
+    Console.WriteLine("2. Solve - Primal Simplex");
+    Console.WriteLine("3. Solve - Revised Primal Simplex");
+    Console.WriteLine("4. Solve - Branch & Bound Simplex");
+    Console.WriteLine("5. Solve - Cutting Plane Algorithm");
+    Console.WriteLine("0. Exit");
+    Console.Write("Enter Choice > ");
+}
 
     private static void LoadModel()
     {
