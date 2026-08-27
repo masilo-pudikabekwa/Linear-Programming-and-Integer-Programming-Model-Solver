@@ -40,7 +40,7 @@ internal class Program
                     break;
 
                 case "5":
-                    //RunAlgorithm( new CuttingPlaneAlgorithm(),"Cutting Plane Algorithm");
+                    RunAlgorithm( new CuttingPlaneAlgorithm(),"Cutting Plane Algorithm");
                     break;
 
                 case "6":
