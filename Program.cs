@@ -159,6 +159,15 @@ internal class Program
             return;
         }
 
+        //If Knapsack has no tableau — sensitivity analysis is meaningless here.
+        if (currentResult.FinalTableau.BasisInverse.GetLength(0) == 0)
+        {
+            Console.WriteLine("Sensitivity analysis requires a tableau-based solve " +
+                "(Primal, Revised, Branch & Bound Simplex, or Cutting Plane) — " +
+                "not available for Knapsack results.");
+            return;
+        }
+
         var analyzer = new SensitivityAnalyzer(currentResult.FinalTableau, currentModel);
         bool inSubmenu = true;
 

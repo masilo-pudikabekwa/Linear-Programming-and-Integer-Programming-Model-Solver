@@ -15,7 +15,7 @@ public class CuttingPlaneAlgorithm : IAlgorithm
         var simplex = new PrimalSimplex();
 
         // Work on a copy so that the original model is not changed.
-        LPModel currentModel = CloneModel(model);
+        LPModel currentModel = model.Clone();
 
         for (int iteration = 0; iteration < MaxIterations; iteration++)
         {
@@ -106,33 +106,33 @@ public class CuttingPlaneAlgorithm : IAlgorithm
     //
     // This allows the Cutting Plane algorithm to use its own copy without modifying the original model loaded by the user
 
-    private static LPModel CloneModel(LPModel model)
-    {
-        var clone = new LPModel
-        {
-            VariableCount = model.VariableCount,
-            Objective = model.Objective,
-            ObjectiveCoefficients =
-                (double[])model.ObjectiveCoefficients.Clone()
-        };
+    //private static LPModel CloneModel(LPModel model)
+    //{
+    //    var clone = new LPModel
+    //    {
+    //        VariableCount = model.VariableCount,
+    //        Objective = model.Objective,
+    //        ObjectiveCoefficients =
+    //            (double[])model.ObjectiveCoefficients.Clone()
+    //    };
 
-        foreach (var constraint in model.Constraints)
-        {
-            clone.Constraints.Add(
-                new Constraint
-                {
-                    Coefficients =
-                        (double[])constraint.Coefficients.Clone(),
+    //    foreach (var constraint in model.Constraints)
+    //    {
+    //        clone.Constraints.Add(
+    //            new Constraint
+    //            {
+    //                Coefficients =
+    //                    (double[])constraint.Coefficients.Clone(),
 
-                    Relation =
-                        constraint.Relation,
+    //                Relation =
+    //                    constraint.Relation,
 
-                    RHS =
-                        constraint.RHS
-                }
-            );
-        }
+    //                RHS =
+    //                    constraint.RHS
+    //            }
+    //        );
+    //    }
 
-        return clone;
-    }
+    //    return clone;
+    //}
 }

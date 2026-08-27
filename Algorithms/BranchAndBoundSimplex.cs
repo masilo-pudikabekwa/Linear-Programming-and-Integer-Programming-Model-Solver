@@ -20,7 +20,7 @@ public class BranchAndBoundSimplex : IAlgorithm
         double bestObjective = double.NegativeInfinity;
 
         var nodes = new Stack<LPModel>();
-        nodes.Push(CloneModel(model));
+        nodes.Push(model.Clone());
 
         int nodesVisited = 0;
 
@@ -82,11 +82,11 @@ public class BranchAndBoundSimplex : IAlgorithm
             double floorValue = Math.Floor(value);
             double ceilValue = Math.Ceiling(value);
 
-     
+
             // LEFT BRANCH:
             // x_i <= floor(x_i)
 
-            LPModel leftModel = CloneModel(model: currentModel);
+            LPModel leftModel = currentModel.Clone();
 
             var leftCoefficients =
                 new double[currentModel.VariableCount];
@@ -105,7 +105,7 @@ public class BranchAndBoundSimplex : IAlgorithm
             // RIGHT BRANCH:
             // x_i >= ceil(x_i)
 
-            LPModel rightModel = CloneModel(model: currentModel);
+            LPModel rightModel = currentModel.Clone();
 
             var rightCoefficients =
                 new double[currentModel.VariableCount];
@@ -143,6 +143,8 @@ public class BranchAndBoundSimplex : IAlgorithm
         result.ObjectiveValue = bestSolution.ObjectiveValue;
         result.VariableValues =
             (double[])bestSolution.VariableValues.Clone();
+        result.FinalTableau = bestSolution.FinalTableau;   // ADD THIS LINE
+        result.Iterations = bestSolution.Iterations;
 
         return result;
     }
@@ -168,31 +170,31 @@ public class BranchAndBoundSimplex : IAlgorithm
     // Creates a copy of the LP model so that branching does not modify
     // the parent node.
     
-    private static LPModel CloneModel(LPModel model)
-    {
-        var clone = new LPModel
-        {
-            VariableCount = model.VariableCount,
-            Objective = model.Objective,
-            ObjectiveCoefficients =
-                (double[])model.ObjectiveCoefficients.Clone()
-        };
+    //private static LPModel CloneModel(LPModel model)
+    //{
+    //    var clone = new LPModel
+    //    {
+    //        VariableCount = model.VariableCount,
+    //        Objective = model.Objective,
+    //        ObjectiveCoefficients =
+    //            (double[])model.ObjectiveCoefficients.Clone()
+    //    };
 
-        foreach (var constraint in model.Constraints)
-        {
-            clone.Constraints.Add(
-                new Constraint
-                {
-                    Coefficients =
-                        (double[])constraint.Coefficients.Clone(),
+    //    foreach (var constraint in model.Constraints)
+    //    {
+    //        clone.Constraints.Add(
+    //            new Constraint
+    //            {
+    //                Coefficients =
+    //                    (double[])constraint.Coefficients.Clone(),
 
-                    Relation = constraint.Relation,
+    //                Relation = constraint.Relation,
 
-                    RHS = constraint.RHS
-                }
-            );
-        }
+    //                RHS = constraint.RHS
+    //            }
+    //        );
+    //    }
 
-        return clone;
-    }
+    //    return clone;
+    //}
 }
