@@ -143,7 +143,7 @@ public class BranchAndBoundSimplex : IAlgorithm
         result.ObjectiveValue = bestSolution.ObjectiveValue;
         result.VariableValues =
             (double[])bestSolution.VariableValues.Clone();
-        result.FinalTableau = bestSolution.FinalTableau;   // ADD THIS LINE
+        result.FinalTableau = bestSolution.FinalTableau;
         result.Iterations = bestSolution.Iterations;
 
         return result;
