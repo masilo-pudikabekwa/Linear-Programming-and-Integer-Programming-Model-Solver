@@ -43,7 +43,9 @@ internal class Program
                     //RunAlgorithm( new CuttingPlaneAlgorithm(),"Cutting Plane Algorithm");
                     break;
 
-                // case "6": Branch & Bound Knapsack  -> Member 4, wire up once delivered
+                case "6":
+                    RunAlgorithm(new KnapsackBranchAndBound(),"Branch & Bound Knapsack");
+                break;
 
                 case "7":
                     RunSensitivityAnalysis();
@@ -74,6 +76,7 @@ internal class Program
         Console.WriteLine("4. Solve - Branch & Bound Simplex");
         Console.WriteLine("5. Solve - Cutting Plane Algorithm");
         Console.WriteLine("7. Sensitivity Analysis (requires an optimal solve)");
+        Console.WriteLine("6. Solve - Branch & Bound Knapsack");
         Console.WriteLine("8. Duality (convert / solve dual / verify)");
         Console.WriteLine("0. Exit");
         Console.Write("Enter Choice > ");
