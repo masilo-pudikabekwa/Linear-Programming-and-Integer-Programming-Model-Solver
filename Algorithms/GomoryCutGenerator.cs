@@ -47,9 +47,9 @@ public static class GomoryCut
 
         for (int r = 1; r < rows; r++)
         {
-            double rhs = tableau.Matrix[r, rhsColumn];
+            double fractionalrhs = tableau.Matrix[r, rhsColumn];
 
-            if (!IsFractional(rhs))
+            if (!IsFractional(fractionalrhs))
             {
                 continue;
             }
@@ -112,12 +112,12 @@ public static class GomoryCut
         // Create the actual LP constraint.
         // frac(a1)x1 + frac(a2)x2 + ... >= frac(b)
 
-        cut = new Constraint
-        {
-            Coefficients = coefficients,
-            Relation = RelationType.GreaterThanOrEqualTo,
-            RHS = rhs
-        };
+        //cut = new Constraint
+        //{
+        //    Coefficients = coefficients,
+        //    Relation = RelationType.GreaterThanOrEqualTo,
+        //    RHS = rhs
+        //};
 
         return true;
     }

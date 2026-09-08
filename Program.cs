@@ -75,8 +75,8 @@ internal class Program
         Console.WriteLine("3. Solve - Revised Primal Simplex");
         Console.WriteLine("4. Solve - Branch & Bound Simplex");
         Console.WriteLine("5. Solve - Cutting Plane Algorithm");
-        Console.WriteLine("7. Sensitivity Analysis (requires an optimal solve)");
         Console.WriteLine("6. Solve - Branch & Bound Knapsack");
+        Console.WriteLine("7. Sensitivity Analysis (requires an optimal solve)");
         Console.WriteLine("8. Duality (convert / solve dual / verify)");
         Console.WriteLine("0. Exit");
         Console.Write("Enter Choice > ");
